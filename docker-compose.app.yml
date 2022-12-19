@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  be:
+    extends:
+      file: ./be/doc-search-service/docker-compose.yml
+      service: be

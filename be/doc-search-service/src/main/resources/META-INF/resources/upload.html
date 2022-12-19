@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        * {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        #drop_zone {
+            border: 3px dashed darkgrey;
+            width: 99%;
+            height: 120px;
+            padding: 2px;
+            border-radius: 10px;
+        }
+
+        #drop_zone:hover {
+            animation-name: drop_zone_hovered;
+            animation-duration: 1s;
+            animation-iteration-count: infinite;
+            animation-direction: alternate;
+            animation-timing-function: ease;
+        }
+
+        @keyframes drop_zone_hovered {
+            to {
+                background-color: azure;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        async function upload(file) {
+            let formData = new FormData();
+            formData.append("file", file);
+            formData.append("fileName", file.name)
+            let result = await fetch('/upload', { method: "POST", body: formData });
+            console.log(result);
+            if (result.ok) {
+                let text = await result.text();
+                console.log("result: " + text);
+                addLastDroppedFile(file.name);
+            } else {
+                if (result.status == 409) {
+                    alert(`upload failed: "${file.name}" is already indexed`);
+                    return;
+                }
+                alert("request failed: " + result.statusText);
+            }
+        }
+        function dropHandler(ev) {
+            console.log('File(s) dropped');
+
+            // Prevent default behavior (Prevent file from being opened)
+            ev.preventDefault();
+
+            if (ev.dataTransfer.items) {
+                // Use DataTransferItemList interface to access the file(s)
+                [...ev.dataTransfer.items].forEach((item, i) => {
+                    // If dropped items aren't files, reject them
+                    if (item.kind === 'file') {
+                        const file = item.getAsFile();
+                        console.log(`file[${i}].name = ${file.name}`);
+                        upload(file);
+                    }
+                });
+            } else {
+                // Use DataTransfer interface to access the file(s)
+                [...ev.dataTransfer.files].forEach((file, i) => {
+                    console.log(`… file[${i}].name = ${file.name}`);
+                });
+            }
+
+            clearLastDroppedFile();
+        }
+
+        function dragOverHandler(ev) {
+            // prevent file from being opened
+            ev.preventDefault();
+        }
+
+        const lastDroppedFiles = [];
+        function clearLastDroppedFile() {
+            lastDroppedFiles.length = 0;
+            document.getElementById("last_dropped_file").innerHTML = "";
+        }
+        function addLastDroppedFile(nextName) {
+            lastDroppedFiles.push(nextName);
+            const ldf = document.getElementById("last_dropped_file");
+            if (lastDroppedFiles.length) {
+                let text = "Recently uploaded: ";
+                let uploaded = lastDroppedFiles.join(", ");
+                if (uploaded.length > 200) {
+                    uploaded = `${lastDroppedFiles.length} file${lastDroppedFiles.length > 1 ? "s" : ""}`
+                }
+                ldf.innerHTML = "Recently uploaded: " + uploaded;
+            }
+        }
+
+    </script>
+    <h4>Upload documents:</h4>
+    <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+        <p>Drag one or more files to this <i>drop zone</i>.</p>
+        <p>Indexing may take some time - just grab a coffee until your document can be searched.</p>
+        <p id="last_dropped_file"></p>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,82 @@
+plugins {
+    id 'application'
+    id 'java'
+    id 'io.quarkus'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:quarkus-debezium-bom:${quarkusPlatformVersion}")
+    implementation 'io.quarkus:quarkus-hibernate-orm'
+    implementation 'io.quarkus:quarkus-smallrye-reactive-messaging-kafka'
+    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
+    implementation 'io.quarkus:quarkus-resteasy-multipart'
+    implementation 'io.quarkus:quarkus-resteasy-jackson'
+    implementation 'io.quarkus:quarkus-spring-data-jpa'
+    implementation 'io.quarkus:quarkus-elasticsearch-rest-client'
+    implementation 'io.quarkus:quarkus-jdbc-postgresql'
+    implementation 'io.quarkus:quarkus-arc'
+    implementation 'io.quarkus:quarkus-resteasy'
+    implementation 'io.quarkus:quarkus-rest-client-reactive-jackson'
+
+    implementation 'io.debezium:debezium-quarkus-outbox'
+    implementation 'io.quarkiverse.minio:quarkus-minio:2.10.2'
+
+	compileOnly 'org.projectlombok:lombok:1.18.22'
+	testCompileOnly 'org.projectlombok:lombok:1.18.22'
+	annotationProcessor 'org.projectlombok:lombok:1.18.22'
+	testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+
+    testImplementation 'io.quarkus:quarkus-junit5'
+    testImplementation 'io.quarkus:quarkus-junit5-mockito'
+    testImplementation 'org.assertj:assertj-core:3.11.1'
+    testImplementation 'io.rest-assured:rest-assured'
+    testImplementation 'org.testcontainers:testcontainers:1.17.6'
+    testImplementation 'org.testcontainers:postgresql:1.17.6'
+    testImplementation 'org.testcontainers:kafka:1.17.6'
+    testImplementation 'io.debezium:debezium-testing-testcontainers:2.0.1.Final' 
+}
+
+group 's'
+version '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+
+tasks.named("test") {
+    useJUnitPlatform {
+        excludeTags "testcontainers"
+    }
+}
+
+tasks.register("uberJarBuild") {
+    System.setProperty("quarkus.package.type", "uber-jar")
+    dependsOn quarkusBuild
+}
+
+tasks.register("testcontainersTest", Test) {
+    useJUnitPlatform {
+        includeTags "testcontainers"
+    }
+    dependsOn uberJarBuild
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}

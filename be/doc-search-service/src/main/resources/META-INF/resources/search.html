@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+    <style>
+        * {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 600px;
+            background-color: black;
+            opacity: 0.85;
+            color: #fff;
+            text-align: left;
+            padding: 5px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 1;
+        }
+
+        /* Show the tooltip text when you mouse over the tooltip container */
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
+    </style>
+
+    <script>
+        function toLink(search_result) {
+            const a = document.createElement("a");
+            a.href = "/download?filename=" + search_result.id;
+            a.innerHTML = search_result.id + " (score: " + search_result.score + ")";
+            // https://stackoverflow.com/questions/15551779/open-link-in-new-tab-or-window
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+
+            if (search_result.highlights.length) {
+                let highlight = search_result.highlights.join("\n\n[...]\n\n");
+                addTooltip(a, highlight);
+            }
+
+            return a;
+        }
+
+        function addTooltip(a, highlight) {
+            a.classList = "tooltip";
+            const span = document.createElement("span");
+            span.classList = "tooltiptext";
+            span.innerHTML = highlight;
+            span.style = "white-space: pre-wrap;"
+            a.appendChild(span);
+        }
+
+        async function onSearchClick(event) {
+            if (timer) clearTimeout(timer);
+            const search_input = document.getElementById("search_input").value;
+            const result = await fetch("/search?" + new URLSearchParams({
+                for: search_input
+            }));
+            const body = await result.json();
+            const results = body.join('\n');
+            const result_area = document.getElementById("result_area");
+            while (result_area.firstChild) result_area.removeChild(result_area.firstChild);
+            const links = body.map(toLink);
+            links.forEach(link => {
+                result_area.appendChild(link);
+                result_area.appendChild(document.createElement("br"));
+                result_area.appendChild(document.createElement("br"));
+            });
+        }
+
+        var timer;
+        function onEnter(event) {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(onSearchClick, 500);
+        }
+    </script>
+    <h4>Search documents:</h4>
+    <input type="text" id="search_input" value="" placeholder="leave me empty to display all results"
+        oninput="onEnter(event)" style="width: 400px;">
+    <button onclick="onSearchClick(event)">></button>
+    <br>
+    <br>
+    <div id="result_area">
+        ...
+    </div>
+    <script>
+        onSearchClick(); // on document ready
+        document.addEventListener("keyup", event => {
+            if (event.key == "Enter") {
+                onSearchClick();
+                event.preventDefault();
+            }
+        });
+    </script>
+</body>
+
+</html>

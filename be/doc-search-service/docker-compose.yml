@@ -1,0 +1,9 @@
+version: '3'
+
+# docker-compose up --build
+# to force image rebuild
+services:
+  be:
+    build:
+      context: ./
+    network_mode: host

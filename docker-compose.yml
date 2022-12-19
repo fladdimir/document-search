@@ -1,0 +1,80 @@
+version: '3'
+
+services:
+  postgres_db:
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGPORT: 5432
+    network_mode: host
+    command:
+      [
+        "postgres",
+        "-c",
+        "log_statement=all",
+        "-c",
+        "wal_level=logical"
+      ]
+
+  kafka:
+    image: vectorized/redpanda
+    network_mode: host
+    container_name: kafka
+    command:
+      - redpanda
+      - start
+      - --smp
+      - '1'
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --set redpanda.empty_seed_starts_cluster=false
+      - --seeds "kafka:33145"
+      - --kafka-addr
+      - INSIDE://0.0.0.0:19092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - INSIDE://kafka:19092,OUTSIDE://localhost:9092
+      - --advertise-rpc-addr kafka:33145
+
+  debezium:
+    image: debezium/connect:2.0.1.Final
+    depends_on:
+      - kafka
+    network_mode: host
+    environment:
+      BOOTSTRAP_SERVERS: "localhost:9092"
+      GROUP_ID: "1"
+      CONFIG_STORAGE_TOPIC: "cdc.configs"
+      OFFSET_STORAGE_TOPIC: "cdc.offset"
+      STATUS_STORAGE_TOPIC: "cdc.status"
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+
+  kafka_ui:
+    image: docker.redpanda.com/vectorized/console:latest
+    network_mode: host
+    environment:
+      KAFKA_BROKERS: "localhost:9092"
+
+  elasticsearch:
+    build:
+      context: ./opensearch
+    network_mode: host
+    environment:
+      # OS:
+      - plugins.security.disabled=true
+      - discovery.type=single-node
+      - http.max_content_length=100MB
+      - network.publish_host=localhost
+      # OS:
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx8g
+
+  s3:
+    image: quay.io/minio/minio
+    network_mode: host
+    environment:
+      - MINIO_ROOT_USER=minio_user
+      - MINIO_ROOT_PASSWORD=minio_pw
+    command: server /data
